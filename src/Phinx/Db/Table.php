@@ -641,16 +641,46 @@ class Table
     }
 
     /**
-     * Commit the pending data waiting for insertion.
+     * Commit the pending data waiting for insertion. Use transaction if adapter is mysql
      *
      * @return void
      */
     public function saveData()
     {
+        if ($this->getAdapter()->getAdapter() instanceof \Phinx\Db\Adapter\MysqlAdapter) {
+            $this->_saveDataWithTransaction();
+        } else {
+            $this->_saveData();
+        }
+    }
+
+    /**
+     * Commit the pending data waiting for insertion.
+     *
+     * @return void
+     */
+    protected function _saveData() {
         foreach ($this->getData() as $row) {
             $this->getAdapter()->insert($this, $row);
         }
     }
+
+    /**
+     * Commit the pending data waiting for insertion as one transaction.
+     *
+     * @return void
+     */
+    protected function _saveDataWithTransaction() {
+        $adapter = $this->getAdapter();
+        $adapter->beginTransaction();
+        try {
+            $this->_saveData();
+            $adapter->commitTransaction();
+        } catch (Exception $e) {
+            $adapter->rollbackTransaction();
+        }
+    }
+
 
     /**
      * Truncates the table.
